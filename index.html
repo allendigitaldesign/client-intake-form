@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#EFEBE3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#191614" media="(prefers-color-scheme: dark)">
+<title>Client questionnaire</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<form id="intake-form" novalidate>
+
+  <div class="wrap">
+
+    <header class="masthead">
+      <p class="eyebrow">Allen Digital Design Co.</p>
+      <h1 id="page-title">&nbsp;</h1>
+      <p class="intro" id="page-intro">&nbsp;</p>
+      <hr class="rule">
+    </header>
+
+    <!-- Spam trap. Real people never see this; bots fill it in. -->
+    <div class="hp" aria-hidden="true">
+      <label for="hp_website">Website</label>
+      <input type="text" id="hp_website" name="website" tabindex="-1" autocomplete="off">
+    </div>
+
+    <div id="form-body"></div>
+
+    <div id="panel-host"></div>
+
+    <p class="colophon">
+      Everything here is optional. Skip anything you are not sure about &mdash;
+      it is quicker to sort out on a call than to guess at.
+    </p>
+
+  </div>
+
+  <div class="bar">
+    <div class="bar-inner">
+      <div class="progress-count" id="progress-count" aria-live="polite"></div>
+      <button type="submit" class="submit-btn" id="submit-btn">Send it in</button>
+    </div>
+  </div>
+
+</form>
+
+<script src="assets/config.js"></script>
+<script src="assets/questions.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
