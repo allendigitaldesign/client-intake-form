@@ -7,9 +7,9 @@ send. The answers and the files arrive in my inbox.
 Built to be reused: the questions live in one file, and nothing else needs
 touching to run it for the next client.
 
-- **Live form:** _(see "Deploying" below — Pages needs switching on once)_
+- **Live form:** https://allendigitaldesign.github.io/client-intake-form/
 - **Supabase project:** `client-intake-forms` (`nbcqybbaeygqhxwfqidq`)
-- **Repo:** `allendigitaldesign/client-intake-form`
+- **Repo:** `allendigitaldesign/client-intake-form` (public, so free Pages works)
 
 ---
 
@@ -98,52 +98,59 @@ git add -A && git commit -m "Update questions" && git push
 
 GitHub Pages redeploys in about a minute.
 
-### Turning Pages on (one time)
+Pages is already on: branch `main`, folder `/ (root)`. The repo is public,
+which is what makes Pages free.
 
-Not yet enabled. On GitHub:
+## Email setup
 
-1. Go to the repo's **Settings → Pages**.
-2. Under "Build and deployment", set **Source** to *Deploy from a branch*.
-3. Set the branch to **`main`** and the folder to **`/ (root)`**. Save.
-4. Wait a minute. The URL will be
-   `https://allendigitaldesign.github.io/client-intake-form/`.
+You need one thing: a Resend API key. No domain, no DNS.
 
-The repo is currently **private**. GitHub Pages on a private repo needs a paid
-GitHub plan — if step 2 won't let you pick a source, make the repo public
-(Settings → General → Danger Zone → Change visibility). Publishing the source
-is safe: the only key in it is the Supabase publishable key, which can do
-nothing but add files to the upload bucket and call the submit function.
+1. Sign up at resend.com using **allendigitaldesignco@gmail.com**.
+2. **API Keys -> Create API Key.** Copy it.
+3. Supabase -> **client-intake-forms** -> Settings -> Edge Functions -> Secrets.
+   Add `RESEND_API_KEY`. No redeploy needed.
 
----
+That's done and working.
 
-## The one thing left to set up: email
+### Why the email has no download links
 
-Submissions save fine without this, but no email goes out until it's done.
+Resend's shared `onboarding@resend.dev` sender silently drops any message
+carrying a storage link. Measured on 2026-09-18:
 
-1. Sign up at **resend.com** using **allendigitaldesignco@gmail.com**. Free
-   plan, 3,000 emails a month, no card.
-2. Go to **API Keys → Create API Key**. Copy it (starts `re_`).
-3. In the Supabase dashboard open the **client-intake-forms** project →
-   **Edge Functions → Secrets** (also called "Manage secrets").
-4. Add a secret named exactly `RESEND_API_KEY` with that value. Save.
+| Email | Result |
+|---|---|
+| Answers only, no links | Delivered |
+| Answers + 1 signed download link | Accepted by Resend, never arrived |
+| Answers + 7 signed download links | Accepted by Resend, never arrived |
+| Answers + 2 files, links removed | Delivered |
 
-That's it — no redeploy needed, the function picks it up on its next run.
+Not spam, not trash, no errors — Resend returns HTTP 200 and the message
+disappears. So the email lists the filenames and tells you the folder, and you
+pick the photos up from Supabase -> Storage -> intake-uploads -> the reference
+id in the email.
 
-**The catch to know about:** without a verified domain, Resend only lets you
-send to the address you signed up with. That's fine here, because that address
-is the destination. But it's why step 1 says to use that exact address. If you
-ever want submissions sent somewhere else, you'll need to verify a domain in
-Resend and set a `FROM_EMAIL` secret to match it.
+**`emailed = true` means Resend accepted it, not that it arrived.** That's the
+trap this table exists to document.
 
-### Other secrets (both optional)
+### Turning download links back on (optional)
 
-| Secret | Default | Use |
+Only worth doing if the Storage step gets annoying. Verify a domain you own at
+**resend.com/domains** (it gives you 3-4 DNS records), then add a second
+Supabase secret:
+
+- `FROM_EMAIL` = `Client questionnaire <forms@yourdomain.com>`
+
+The function watches for `FROM_EMAIL`. The moment it's set, it goes back to
+putting one-year signed download links straight in the email. Nothing else to
+change.
+
+### Secrets
+
+| Secret | Default | Notes |
 |---|---|---|
-| `RESEND_API_KEY` | — | **Required.** From resend.com. |
+| `RESEND_API_KEY` | — | Required. |
 | `TO_EMAIL` | `allendigitaldesignco@gmail.com` | Where submissions go. |
-| `FROM_EMAIL` | `onboarding@resend.dev` | Only change with a verified domain. |
-
----
+| `FROM_EMAIL` | unset | Set it only with a verified domain. Setting it re-enables download links. |
 
 ## Where submissions live
 

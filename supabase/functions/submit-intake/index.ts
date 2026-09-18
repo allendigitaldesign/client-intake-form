@@ -64,6 +64,7 @@ function buildHtml(
   files: (FileRef & { url?: string })[],
   answeredCount: number,
   questionCount: number,
+  linksWork: boolean,
 ): string {
   const ink = "#1F1A17";
   const muted = "#6B635C";
@@ -109,7 +110,9 @@ function buildHtml(
       const label = `${esc(f.name)} <span style="color:${muted};">(${esc(
         formatBytes(f.size),
       )})</span>`;
-      const link = f.url
+      const link = !linksWork
+        ? ""
+        : f.url
         ? `<a href="${esc(f.url)}" style="color:${accent};font-weight:700;
              text-decoration:underline;">Download</a>`
         : `<span style="color:${muted};">link unavailable</span>`;
@@ -134,7 +137,9 @@ function buildHtml(
          <table cellpadding="0" cellspacing="0" border="0" width="100%"
                 style="margin-top:6px;">${fileRows}</table>
          <div style="font:400 12px/1.5 Arial,sans-serif;color:${muted};margin-top:10px;">
-           Links are good for one year. Save anything you want to keep.</div>
+           ${linksWork
+             ? "Links are good for one year. Save anything you want to keep."
+             : `Open these in Supabase &rarr; Storage &rarr; intake-uploads &rarr; ${esc(submissionId)}`}</div>
        </td></tr>`
     : `<tr><td style="padding:26px 0 0;font:400 14px/1.5 Arial,sans-serif;
          color:${muted};">No files were uploaded.</td></tr>`;
@@ -175,6 +180,7 @@ function buildText(
   submissionId: string,
   answers: Answer[],
   files: (FileRef & { url?: string })[],
+  linksWork: boolean,
 ): string {
   const lines: string[] = [formTitle, `Reference: ${submissionId}`, ""];
 
@@ -182,7 +188,11 @@ function buildText(
     lines.push("== FILES ==");
     for (const f of files) {
       lines.push(`- ${f.name} (${formatBytes(f.size)}) [${f.field}]`);
-      lines.push(`  ${f.url ?? "link unavailable"}`);
+      if (linksWork) lines.push(`  ${f.url ?? "link unavailable"}`);
+    }
+    if (!linksWork) {
+      lines.push("");
+      lines.push(`Files are in Supabase > Storage > intake-uploads > ${submissionId}`);
     }
     lines.push("");
   }
@@ -263,21 +273,26 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Could not save the submission" }, 500);
   }
 
-  // Signed links for each upload.
+  // Email it over.
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  const toEmail = Deno.env.get("TO_EMAIL") ?? "allendigitaldesignco@gmail.com";
+  const customFrom = Deno.env.get("FROM_EMAIL");
+  const fromEmail = customFrom ?? "Client questionnaire <onboarding@resend.dev>";
+
+  // Resend's shared onboarding@resend.dev address silently drops any message
+  // carrying a storage link -- measured, see README. So only include download
+  // links once a verified sending domain is configured via FROM_EMAIL.
+  const linksWork = Boolean(customFrom);
+
   const signed: (FileRef & { url?: string })[] = [];
   for (const f of files) {
+    if (!linksWork) { signed.push({ ...f }); continue; }
     const { data, error } = await supabase.storage
       .from("intake-uploads")
       .createSignedUrl(f.path, SIGNED_URL_TTL);
     if (error) console.error("sign failed", f.path, error.message);
     signed.push({ ...f, url: data?.signedUrl });
   }
-
-  // Email it over.
-  const resendKey = Deno.env.get("RESEND_API_KEY");
-  const toEmail = Deno.env.get("TO_EMAIL") ?? "allendigitaldesignco@gmail.com";
-  const fromEmail = Deno.env.get("FROM_EMAIL") ??
-    "Client questionnaire <onboarding@resend.dev>";
 
   let emailed = false;
   let emailError: string | null = null;
@@ -301,9 +316,10 @@ Deno.serve(async (req: Request) => {
             ? `Questionnaire: ${gymName}`
             : `Questionnaire: new submission`,
           html: buildHtml(
-            formTitle, submissionId, answers, signed, answeredCount, questionCount,
+            formTitle, submissionId, answers, signed, answeredCount,
+            questionCount, linksWork,
           ),
-          text: buildText(formTitle, submissionId, answers, signed),
+          text: buildText(formTitle, submissionId, answers, signed, linksWork),
         }),
       });
       if (res.ok) {
